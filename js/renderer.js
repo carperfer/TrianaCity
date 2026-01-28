@@ -7,28 +7,71 @@ export class Renderer {
         this.fgCanvas = fgCanvas;
         this.texture = texture;
         
-        this.bgCanvas.width = config.canvas.width;
-        this.bgCanvas.height = config.canvas.height;
-        this.fgCanvas.width = config.canvas.width;
-        this.fgCanvas.height = config.canvas.height;
-        
         this.bgCtx = bgCanvas.getContext('2d');
         this.fgCtx = fgCanvas.getContext('2d');
         
-        this.setupTransform(this.bgCtx);
-        this.setupTransform(this.fgCtx);
+        this.currentGridSize = config.grid.defaultSize;
+        this.zoomLevel = 1.0;
+        this.minZoom = 0.5;
+        this.maxZoom = 2.0;
+        this.resizeCanvas(this.currentGridSize);
     }
 
-    setupTransform(ctx) {
+    resizeCanvas(gridSize) {
+        // Calculate needed canvas size based on grid
+        const minWidth = 910;
+        const minHeight = 666;
+        
+        // Isometric projection needs more space for larger grids
+        const neededWidth = Math.max(minWidth, gridSize * config.canvas.tileWidth + 200);
+        const neededHeight = Math.max(minHeight, gridSize * config.canvas.tileHeight + 300);
+        
+        this.bgCanvas.width = neededWidth;
+        this.bgCanvas.height = neededHeight;
+        this.fgCanvas.width = neededWidth;
+        this.fgCanvas.height = neededHeight;
+        
+        this.currentGridSize = gridSize;
+        
+        // Reset and reapply transform
+        this.bgCtx.setTransform(1, 0, 0, 1, 0, 0);
+        this.fgCtx.setTransform(1, 0, 0, 1, 0, 0);
+        
+        this.setupTransform(this.bgCtx, neededWidth);
+        this.setupTransform(this.fgCtx, neededWidth);
+    }
+
+    setupTransform(ctx, width) {
+        const w = width || config.canvas.width;
         ctx.translate(
-            config.canvas.width / 2, 
+            w / 2, 
             config.canvas.tileHeight * 2
         );
+        ctx.scale(this.zoomLevel, this.zoomLevel);
+    }
+
+    setZoom(delta) {
+        const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomLevel + delta));
+        if (newZoom !== this.zoomLevel) {
+            this.zoomLevel = newZoom;
+            this.resizeCanvas(this.currentGridSize);
+            return true;
+        }
+        return false;
+    }
+
+    getZoomLevel() {
+        return this.zoomLevel;
     }
 
     drawMap(gameState) {
-        const w = config.canvas.width;
-        const h = config.canvas.height - 204;
+        // Update canvas size if grid changed
+        if (gameState.gridSize !== this.currentGridSize) {
+            this.resizeCanvas(gameState.gridSize);
+        }
+        
+        const w = this.bgCanvas.width;
+        const h = this.bgCanvas.height - 204;
         this.bgCtx.clearRect(-w, -h, w * 2, h * 2);
         
         for (let i = 0; i < gameState.gridSize; i++) {
@@ -60,8 +103,8 @@ export class Renderer {
     }
 
     drawTilePreview(x, y, color = 'rgba(0,0,0,0.2)') {
-        const w = config.canvas.width;
-        const h = config.canvas.height - 204;
+        const w = this.fgCanvas.width;
+        const h = this.fgCanvas.height - 204;
         this.fgCtx.clearRect(-w, -h, w * 2, h * 2);
         
         this.fgCtx.save();
@@ -82,14 +125,23 @@ export class Renderer {
     }
 
     clearPreview() {
-        const w = config.canvas.width;
-        const h = config.canvas.height - 204;
+        const w = this.fgCanvas.width;
+        const h = this.fgCanvas.height - 204;
         this.fgCtx.clearRect(-w, -h, w * 2, h * 2);
     }
 
     getGridPosition(offsetX, offsetY, gridSize) {
-        const _y = (offsetY - config.canvas.tileHeight * 2) / config.canvas.tileHeight;
-        const _x = offsetX / config.canvas.tileWidth - gridSize / 2;
+        // Use current canvas dimensions and zoom level
+        const canvasWidth = this.fgCanvas.width;
+        const pivotX = canvasWidth / 2;
+        const pivotY = config.canvas.tileHeight * 2;
+        
+        // Adjust for zoom
+        const adjustedOffsetX = (offsetX - pivotX) / this.zoomLevel;
+        const adjustedOffsetY = (offsetY - pivotY) / this.zoomLevel;
+        
+        const _y = adjustedOffsetY / config.canvas.tileHeight;
+        const _x = adjustedOffsetX / config.canvas.tileWidth;
         const x = Math.floor(_y - _x);
         const y = Math.floor(_x + _y);
         return { x, y };

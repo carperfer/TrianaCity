@@ -64,6 +64,9 @@ class IsoCityApp {
 
         // Control buttons
         $('#applyGridSize').addEventListener('click', () => this.changeGridSize());
+        $('#zoomIn').addEventListener('click', () => this.handleZoom(0.1));
+        $('#zoomOut').addEventListener('click', () => this.handleZoom(-0.1));
+        $('#zoomReset').addEventListener('click', () => this.handleZoomReset());
         $('#saveCity').addEventListener('click', () => this.saveCity());
         $('#loadCity').addEventListener('click', () => $('#fileInput').click());
         $('#clearMap').addEventListener('click', () => this.clearMap());
@@ -177,6 +180,26 @@ class IsoCityApp {
             this.updateHashState();
             this.ui.showNotification('Map cleared', 'info');
         }
+    }
+
+    handleZoom(delta) {
+        if (this.renderer.setZoom(delta)) {
+            this.renderer.drawMap(this.state);
+            this.ui.updateZoomDisplay(this.renderer.getZoomLevel());
+        }
+    }
+
+    handleZoomReset() {
+        this.renderer.zoomLevel = 1.0;
+        this.renderer.resizeCanvas(this.state.gridSize);
+        this.renderer.drawMap(this.state);
+        this.ui.updateZoomDisplay(1.0);
+    }
+
+    handleWheel(e) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        this.handleZoom(delta);
     }
 }
 

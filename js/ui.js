@@ -40,7 +40,10 @@ export class UIManager {
                 div.dataset.row = i;
                 div.dataset.col = j;
                 div.dataset.index = toolCount - 1;
-                div.style.backgroundPosition = `-${j * config.texture.tileWidth + config.texture.borderPadding}px -${i * config.texture.tileHeight}px`;
+                // Scale positions proportionally: 90/130 ≈ 0.692, 160/230 ≈ 0.696
+                const bgPosX = Math.round(j * 90 + 1.4);
+                const bgPosY = Math.round(i * 160);
+                div.style.backgroundPosition = `-${bgPosX}px -${bgPosY}px`;
                 
                 div.addEventListener('click', (e) => {
                     this.selectTool(e.target);
@@ -101,6 +104,13 @@ export class UIManager {
                 <button id="applyGridSize">Apply</button>
             </div>
             <div class="control-group">
+                <label>Zoom:</label>
+                <button id="zoomOut" title="Zoom out">−</button>
+                <span id="zoomLevel">100%</span>
+                <button id="zoomIn" title="Zoom in">+</button>
+                <button id="zoomReset" title="Reset zoom">⟲</button>
+            </div>
+            <div class="control-group">
                 <button id="saveCity">💾 Save</button>
                 <button id="loadCity">📂 Load</button>
                 <input type="file" id="fileInput" accept=".json" style="display:none">
@@ -110,6 +120,13 @@ export class UIManager {
             </div>
         `;
         return controls;
+    }
+
+    updateZoomDisplay(zoomLevel) {
+        const display = $('#zoomLevel');
+        if (display) {
+            display.textContent = `${Math.round(zoomLevel * 100)}%`;
+        }
     }
 
     showNotification(message, type = 'info') {
