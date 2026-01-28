@@ -27,12 +27,15 @@ class IsoCityApp {
             // Setup UI
             const toolsContainer = $('#tools');
             this.ui = new UIManager(toolsContainer);
-            this.ui.generateToolPalette(texture.image);
+            this.ui.generateToolPalette(texture.image, texture.rows, texture.columns);
             
             // Insert controls
             const mainSection = $('#main');
             const controls = this.ui.createControls();
             mainSection.insertBefore(controls, mainSection.firstChild);
+            
+            // Update texture selector
+            this.ui.updateTextureSelector(this.textureManager.getAllTextures(), 0);
 
             // Load state from URL hash
             this.loadHashState();
@@ -64,6 +67,7 @@ class IsoCityApp {
 
         // Control buttons
         $('#applyGridSize').addEventListener('click', () => this.changeGridSize());
+        $('#textureSelect').addEventListener('change', (e) => this.changeTexture(e));
         $('#zoomIn').addEventListener('click', () => this.handleZoom(0.1));
         $('#zoomOut').addEventListener('click', () => this.handleZoom(-0.1));
         $('#zoomReset').addEventListener('click', () => this.handleZoomReset());
@@ -200,6 +204,27 @@ class IsoCityApp {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.05 : 0.05;
         this.handleZoom(delta);
+    }
+
+    changeTexture(e) {
+        const textureIndex = parseInt(e.target.value);
+        const textures = this.textureManager.getAllTextures();
+        
+        if (textureIndex >= 0 && textureIndex < textures.length) {
+            const texture = textures[textureIndex];
+            this.textureManager.currentTexture = texture;
+            
+            // Update renderer
+            this.renderer.texture = texture.image;
+            
+            // Regenerate tool palette
+            this.ui.generateToolPalette(texture.image, texture.rows, texture.columns);
+            
+            // Redraw map
+            this.renderer.drawMap(this.state);
+            
+            this.ui.showNotification(`Switched to ${texture.name}`, 'info');
+        }
     }
 }
 

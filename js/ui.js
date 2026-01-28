@@ -8,7 +8,7 @@ export class UIManager {
         this.allTools = [];
     }
 
-    generateToolPalette(texture) {
+    generateToolPalette(texture, rows, columns) {
         // Create search and filter section
         const toolsWrapper = $c('div');
         toolsWrapper.className = 'tools-wrapper';
@@ -32,8 +32,8 @@ export class UIManager {
         this.allTools = [];
         let toolCount = 0;
         
-        for (let i = 0; i < config.texture.rows; i++) {
-            for (let j = 0; j < config.texture.columns; j++) {
+        for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < columns; j++) {
                 const div = $c('div');
                 div.id = `tool_${toolCount++}`;
                 div.className = 'tool-item';
@@ -44,6 +44,7 @@ export class UIManager {
                 const bgPosX = Math.round(j * 90 + 1.4);
                 const bgPosY = Math.round(i * 160);
                 div.style.backgroundPosition = `-${bgPosX}px -${bgPosY}px`;
+                div.style.backgroundImage = `url('${texture.src}')`;
                 
                 div.addEventListener('click', (e) => {
                     this.selectTool(e.target);
@@ -104,6 +105,12 @@ export class UIManager {
                 <button id="applyGridSize">Apply</button>
             </div>
             <div class="control-group">
+                <label for="textureSelect">Tiles:</label>
+                <select id="textureSelect">
+                    <option value="0">Loading...</option>
+                </select>
+            </div>
+            <div class="control-group">
                 <label>Zoom:</label>
                 <button id="zoomOut" title="Zoom out">−</button>
                 <span id="zoomLevel">100%</span>
@@ -120,6 +127,15 @@ export class UIManager {
             </div>
         `;
         return controls;
+    }
+
+    updateTextureSelector(textures, currentIndex) {
+        const selector = $('#textureSelect');
+        if (!selector) return;
+        
+        selector.innerHTML = textures.map((tex, idx) => 
+            `<option value="${idx}" ${idx === currentIndex ? 'selected' : ''}>${tex.name}</option>`
+        ).join('');
     }
 
     updateZoomDisplay(zoomLevel) {

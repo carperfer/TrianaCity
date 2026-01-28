@@ -61,6 +61,16 @@ canvas {
 	width: 60px;
 }
 
+.control-group select {
+	padding: 6px 8px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-size: 13px;
+	background: white;
+	cursor: pointer;
+	min-width: 120px;
+}
+
 .control-group button {
 	padding: 6px 12px;
 	background: #4a90e2;
@@ -183,7 +193,6 @@ canvas {
 
 .tool-item {
 	display: block;
-	background-image: url('../textures/01_130x66_130x230.png');
 	background-repeat: no-repeat;
 	background-size: 1080px 960px;
 	width: 90px;
