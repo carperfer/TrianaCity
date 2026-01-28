@@ -8,7 +8,7 @@ export class UIManager {
         this.allTools = [];
     }
 
-    generateToolPalette(texture, rows, columns) {
+    generateToolPalette(texture, rows, columns, isAtlas = false, sprites = null) {
         // Create search and filter section
         const toolsWrapper = $c('div');
         toolsWrapper.className = 'tools-wrapper';
@@ -34,17 +34,42 @@ export class UIManager {
         
         for (let i = 0; i < rows; i++) {
             for (let j = 0; j < columns; j++) {
+                const spriteIndex = i * columns + j;
+                
+                // Skip if atlas and sprite doesn't exist
+                if (isAtlas && sprites && spriteIndex >= sprites.length) {
+                    continue;
+                }
+                
                 const div = $c('div');
                 div.id = `tool_${toolCount++}`;
                 div.className = 'tool-item';
                 div.dataset.row = i;
                 div.dataset.col = j;
-                div.dataset.index = toolCount - 1;
-                // Scale positions proportionally: 90/130 ≈ 0.692, 160/230 ≈ 0.696
-                const bgPosX = Math.round(j * 90 + 1.4);
-                const bgPosY = Math.round(i * 160);
-                div.style.backgroundPosition = `-${bgPosX}px -${bgPosY}px`;
-                div.style.backgroundImage = `url('${texture.src}')`;
+                div.dataset.index = spriteIndex;
+                
+                if (isAtlas && sprites) {
+                    // Atlas-based texture
+                    const sprite = sprites[spriteIndex];
+                    if (sprite) {
+                        const scale = 90 / Math.max(sprite.width, sprite.height);
+                        const scaledWidth = sprite.width * scale;
+                        const scaledHeight = sprite.height * scale;
+                        const offsetX = (90 - scaledWidth) / 2;
+                        const offsetY = (160 - scaledHeight) / 2;
+                        
+                        div.style.backgroundImage = `url('${texture.src}')`;
+                        div.style.backgroundPosition = `-${sprite.x * scale - offsetX}px -${sprite.y * scale - offsetY}px`;
+                        div.style.backgroundSize = `${texture.width * scale}px ${texture.height * scale}px`;
+                    }
+                } else {
+                    // Grid-based texture
+                    const bgPosX = Math.round(j * 90 + 1.4);
+                    const bgPosY = Math.round(i * 160);
+                    div.style.backgroundPosition = `-${bgPosX}px -${bgPosY}px`;
+                    div.style.backgroundImage = `url('${texture.src}')`;
+                    div.style.backgroundSize = '1080px 960px';
+                }
                 
                 div.addEventListener('click', (e) => {
                     this.selectTool(e.target);

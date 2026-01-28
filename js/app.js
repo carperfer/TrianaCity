@@ -17,6 +17,22 @@ class IsoCityApp {
         try {
             // Load textures
             await this.textureManager.loadDefaultTextures();
+            
+            // Add Kenney atlas-based texture packs
+            await this.textureManager.addTexture(
+                'Buildings',
+                'textures/buildingTiles_sheet.png',
+                0, 0,  // Will be calculated from XML
+                'textures/buildingTiles_sheet.xml'
+            );
+            
+            await this.textureManager.addTexture(
+                'City',
+                'textures/cityTiles_sheet.png',
+                0, 0,  // Will be calculated from XML
+                'textures/cityTiles_sheet.xml'
+            );
+            
             const texture = this.textureManager.getCurrentTexture();
             
             // Setup canvas
@@ -27,7 +43,16 @@ class IsoCityApp {
             // Setup UI
             const toolsContainer = $('#tools');
             this.ui = new UIManager(toolsContainer);
-            this.ui.generateToolPalette(texture.image, texture.rows, texture.columns);
+            this.ui.generateToolPalette(
+                texture.image, 
+                texture.rows, 
+                texture.columns,
+                texture.isAtlas,
+                texture.sprites
+            );
+            
+            // Store texture info in renderer
+            this.renderer.setTextureInfo(texture);
             
             // Insert controls
             const mainSection = $('#main');
@@ -39,7 +64,7 @@ class IsoCityApp {
 
             // Load state from URL hash
             this.loadHashState();
-            this.renderer.drawMap(this.state);
+            this.renderer.drawMap(this.state, this.textureManager);
 
             // Setup event handlers
             this.setupEventHandlers();
@@ -62,7 +87,9 @@ class IsoCityApp {
 
         // Tool selection
         this.ui.onToolSelect = (row, col) => {
-            this.state.selectedTool = [row, col];
+            const currentTexture = this.textureManager.currentTexture;
+            const textureIndex = this.textureManager.getAllTextures().indexOf(currentTexture);
+            this.state.selectedTool = [textureIndex, row, col];
         };
 
         // Control buttons
@@ -79,7 +106,7 @@ class IsoCityApp {
         // Browser navigation
         window.addEventListener('popstate', () => {
             this.loadHashState();
-            this.renderer.drawMap(this.state);
+            this.renderer.drawMap(this.state, this.textureManager);
         });
     }
 
@@ -104,12 +131,19 @@ class IsoCityApp {
         if (pos.x >= 0 && pos.x < this.state.gridSize && 
             pos.y >= 0 && pos.y < this.state.gridSize) {
             
-            const texRow = (e.which === 3) ? 0 : this.state.selectedTool[0];
-            const texCol = (e.which === 3) ? 0 : this.state.selectedTool[1];
+            let textureId, texRow, texCol;
+            if (e.which === 3) {
+                // Right click - clear
+                textureId = 0;
+                texRow = 0;
+                texCol = 0;
+            } else {
+                [textureId, texRow, texCol] = this.state.selectedTool;
+            }
             
-            this.state.setTile(pos.x, pos.y, texRow, texCol);
+            this.state.setTile(pos.x, pos.y, textureId, texRow, texCol);
             this.state.isPlacing = true;
-            this.renderer.drawMap(this.state);
+            this.renderer.drawMap(this.state, this.textureManager);
             this.renderer.clearPreview();
             this.updateHashState();
         }
@@ -141,7 +175,7 @@ class IsoCityApp {
         
         try {
             this.state.setGridSize(newSize);
-            this.renderer.drawMap(this.state);
+            this.renderer.drawMap(this.state, this.textureManager);
             this.updateHashState();
             this.ui.showNotification(`Grid size changed to ${newSize}x${newSize}`, 'success');
         } catch (error) {
@@ -165,7 +199,7 @@ class IsoCityApp {
             
             // Update UI
             $('#gridSize').value = this.state.gridSize;
-            this.renderer.drawMap(this.state);
+            this.renderer.drawMap(this.state, this.textureManager);
             this.updateHashState();
             
             this.ui.showNotification('City loaded successfully!', 'success');
@@ -180,7 +214,7 @@ class IsoCityApp {
     clearMap() {
         if (confirm('Are you sure you want to clear the map?')) {
             this.state.map = this.state.createEmptyMap(this.state.gridSize);
-            this.renderer.drawMap(this.state);
+            this.renderer.drawMap(this.state, this.textureManager);
             this.updateHashState();
             this.ui.showNotification('Map cleared', 'info');
         }
@@ -188,7 +222,7 @@ class IsoCityApp {
 
     handleZoom(delta) {
         if (this.renderer.setZoom(delta)) {
-            this.renderer.drawMap(this.state);
+            this.renderer.drawMap(this.state, this.textureManager);
             this.ui.updateZoomDisplay(this.renderer.getZoomLevel());
         }
     }
@@ -196,7 +230,7 @@ class IsoCityApp {
     handleZoomReset() {
         this.renderer.zoomLevel = 1.0;
         this.renderer.resizeCanvas(this.state.gridSize);
-        this.renderer.drawMap(this.state);
+        this.renderer.drawMap(this.state, this.textureManager);
         this.ui.updateZoomDisplay(1.0);
     }
 
@@ -216,12 +250,19 @@ class IsoCityApp {
             
             // Update renderer
             this.renderer.texture = texture.image;
+            this.renderer.setTextureInfo(texture);
             
             // Regenerate tool palette
-            this.ui.generateToolPalette(texture.image, texture.rows, texture.columns);
+            this.ui.generateToolPalette(
+                texture.image, 
+                texture.rows, 
+                texture.columns,
+                texture.isAtlas,
+                texture.sprites
+            );
             
             // Redraw map
-            this.renderer.drawMap(this.state);
+            this.renderer.drawMap(this.state, this.textureManager);
             
             this.ui.showNotification(`Switched to ${texture.name}`, 'info');
         }

@@ -2,19 +2,38 @@
 
 This guide explains how to add new texture packs from [Kenney.nl](https://www.kenney.nl/) to IsoCity.
 
+## ⚠️ IMPORTANTE: Formato Compatible
+
+**El proyecto solo soporta sprite sheets con grid regular**, donde todos los tiles tienen el mismo tamaño y están organizados en filas y columnas.
+
+### ✅ Formato Compatible (Grid Regular)
+```
++-----+-----+-----+
+| Img | Img | Img |  <- Todos los tiles del mismo tamaño
++-----+-----+-----+
+| Img | Img | Img |  <- Organizados en grid
++-----+-----+-----+
+```
+
+### ❌ Formato NO Compatible (Atlas con XML)
+Archivos como `buildingTiles_sheet.png` con `buildingTiles_sheet.xml` donde cada tile tiene posición y tamaño diferente NO funcionan con el sistema actual.
+
 ## Finding Textures
 
-1. Visit [OpenGameArt.org Kenney Collection](https://opengameart.org/users/kenney)
-2. Look for isometric building/tile packs
-3. Download the sprite sheets
+**Requisitos del sprite sheet:**
+- ✅ Tiles organizados en grid regular (filas y columnas)
+- ✅ Todos los tiles del mismo tamaño (ej: 130×230 pixels)
+- ✅ Padding consistente entre tiles (opcional, ej: 2px)
+- ❌ NO archivos XML de atlas
+- ❌ NO tiles de tamaños variablesmismo tamaño en grid
 
 ## Recommended Texture Packs
 
-From Kenney's collection on OpenGameArt:
-- **Isometric Buildings** - Various city buildings
-- **Isometric Landscape** - Trees, rocks, nature elements (current pack)
-- **Isometric Vehicles** - Cars, trucks, etc.
-- **Isometric City** - Urban infrastructure
+Packs compatibles de Kenney:
+- **Isometric Landscape** (pack actual) - Grid 12×6
+- Busca packs antiguos que usen grid en lugar de atlas
+
+**Cómo verificar**: Si el pack incluye un archivo `.xml`, probablemente usa atlas y NO es compatible.
 
 ## Adding a New Texture Pack
 

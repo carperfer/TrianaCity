@@ -1,5 +1,6 @@
 // Texture management module
 import { config } from './config.js';
+import { AtlasParser } from './atlasParser.js';
 
 export class TextureManager {
     constructor() {
@@ -8,7 +9,7 @@ export class TextureManager {
         this.loadedCount = 0;
     }
 
-    addTexture(name, path, columns, rows) {
+    addTexture(name, path, columns, rows, xmlPath = null) {
         return new Promise((resolve, reject) => {
             const img = new Image();
             const texture = {
@@ -18,10 +19,24 @@ export class TextureManager {
                 columns,
                 rows,
                 tileWidth: config.texture.tileWidth,
-                tileHeight: config.texture.tileHeight
+                tileHeight: config.texture.tileHeight,
+                isAtlas: !!xmlPath,
+                xmlPath,
+                sprites: null
             };
             
-            img.onload = () => {
+            img.onload = async () => {
+                // If it's an atlas, parse the XML
+                if (xmlPath) {
+                    texture.sprites = await AtlasParser.parseXML(xmlPath);
+                    if (texture.sprites) {
+                        // Calculate virtual grid based on sprite count
+                        const spriteCount = texture.sprites.length;
+                        texture.rows = Math.ceil(Math.sqrt(spriteCount));
+                        texture.columns = Math.ceil(spriteCount / texture.rows);
+                    }
+                }
+                
                 this.textures.push(texture);
                 this.loadedCount++;
                 if (!this.currentTexture) {

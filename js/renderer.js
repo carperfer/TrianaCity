@@ -64,7 +64,7 @@ export class Renderer {
         return this.zoomLevel;
     }
 
-    drawMap(gameState) {
+    drawMap(gameState, textureManager) {
         // Update canvas size if grid changed
         if (gameState.gridSize !== this.currentGridSize) {
             this.resizeCanvas(gameState.gridSize);
@@ -77,29 +77,62 @@ export class Renderer {
         for (let i = 0; i < gameState.gridSize; i++) {
             for (let j = 0; j < gameState.gridSize; j++) {
                 const tile = gameState.getTile(i, j);
-                this.drawImageTile(this.bgCtx, i, j, tile[0], tile[1]);
+                const [textureId, texRow, texCol] = tile.length === 3 ? tile : [0, tile[0], tile[1]];
+                this.drawImageTile(this.bgCtx, i, j, textureId, texRow, texCol, textureManager);
             }
         }
     }
 
-    drawImageTile(ctx, x, y, texRow, texCol) {
+    drawImageTile(ctx, x, y, textureId, texRow, texCol, textureManager) {
         ctx.save();
         ctx.translate(
             (y - x) * config.canvas.tileWidth / 2,
             (x + y) * config.canvas.tileHeight / 2
         );
         
-        const srcX = texCol * config.texture.tileWidth;
-        const srcY = texRow * config.texture.tileHeight;
+        // Get the specific texture for this tile
+        const textures = textureManager.getAllTextures();
+        const tileTexture = textures[textureId] || textures[0];
         
-        ctx.drawImage(
-            this.texture,
-            srcX, srcY,
-            config.texture.tileWidth, config.texture.tileHeight,
-            -65, -130,
-            config.texture.tileWidth, config.texture.tileHeight
-        );
+        if (tileTexture && tileTexture.isAtlas && tileTexture.sprites) {
+            // Calculate sprite index from row/col
+            const spriteIndex = texRow * tileTexture.columns + texCol;
+            const sprite = tileTexture.sprites[spriteIndex];
+            
+            if (sprite) {
+                // Use sprite dimensions from XML directly
+                // Center horizontally and anchor at bottom of isometric tile
+                const offsetX = -sprite.width / 2;
+                const offsetY = -sprite.height + config.canvas.tileHeight;
+                
+                ctx.drawImage(
+                    tileTexture.image,
+                    sprite.x, sprite.y, sprite.width, sprite.height,
+                    offsetX, offsetY, sprite.width, sprite.height
+                );
+            }
+        } else if (tileTexture) {
+            // Regular grid-based texture
+            const srcX = texCol * config.texture.tileWidth;
+            const srcY = texRow * config.texture.tileHeight;
+            
+            ctx.drawImage(
+                tileTexture.image,
+                srcX, srcY,
+                config.texture.tileWidth, config.texture.tileHeight,
+                -65, -130,
+                config.texture.tileWidth, config.texture.tileHeight
+            );
+        }
         ctx.restore();
+    }
+    
+    getCurrentTextureInfo() {
+        return this.textureInfo || null;
+    }
+    
+    setTextureInfo(textureInfo) {
+        this.textureInfo = textureInfo;
     }
 
     drawTilePreview(x, y, color = 'rgba(0,0,0,0.2)') {

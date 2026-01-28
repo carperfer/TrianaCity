@@ -5,7 +5,7 @@ export class GameState {
     constructor() {
         this.gridSize = config.grid.defaultSize;
         this.map = this.createEmptyMap(this.gridSize);
-        this.selectedTool = [0, 0];
+        this.selectedTool = [0, 0, 0]; // [textureId, row, col]
         this.activeTool = null;
         this.isPlacing = false;
         this.previousState = null;
@@ -13,7 +13,7 @@ export class GameState {
 
     createEmptyMap(size) {
         return Array(size).fill(null).map(() => 
-            Array(size).fill(null).map(() => [0, 0])
+            Array(size).fill(null).map(() => [0, 0, 0])
         );
     }
 
@@ -31,14 +31,16 @@ export class GameState {
         const copySize = Math.min(oldSize, size);
         for (let i = 0; i < copySize; i++) {
             for (let j = 0; j < copySize; j++) {
-                this.map[i][j] = oldMap[i][j];
+                const tile = oldMap[i][j];
+                // Convert old format [row, col] to new [textureId, row, col]
+                this.map[i][j] = tile.length === 2 ? [0, tile[0], tile[1]] : tile;
             }
         }
     }
 
-    setTile(x, y, texX, texY) {
+    setTile(x, y, textureId, texX, texY) {
         if (x >= 0 && x < this.gridSize && y >= 0 && y < this.gridSize) {
-            this.map[x][y] = [texX, texY];
+            this.map[x][y] = [textureId, texX, texY];
             return true;
         }
         return false;
@@ -69,33 +71,74 @@ export class GameState {
         
         this.gridSize = data.gridSize || config.grid.defaultSize;
         this.map = data.map || this.createEmptyMap(this.gridSize);
+        
+        // Convert old format to new if needed
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                if (this.map[i][j].length === 2) {
+                    this.map[i][j] = [0, this.map[i][j][0], this.map[i][j][1]];
+                }
+            }
+        }
     }
 
     // URL hash serialization (backward compatible)
     toHashState() {
-        const u8 = new Uint8Array(this.gridSize * this.gridSize);
-        let c = 0;
+        const tiles = [];
         for (let i = 0; i < this.gridSize; i++) {
             for (let j = 0; j < this.gridSize; j++) {
-                u8[c++] = this.map[i][j][0] * config.texture.columns + this.map[i][j][1];
+                const [textureId, texRow, texCol] = this.map[i][j];
+                tiles.push(`${textureId}:${texRow}:${texCol}`);
             }
         }
-        return this.toBase64(u8);
+        return btoa(`${this.gridSize}|${tiles.join(',')}`);
     }
 
     fromHashState(state) {
         if (!state) return;
         
-        const u8 = this.fromBase64(state);
-        let c = 0;
-        
-        for (let i = 0; i < this.gridSize; i++) {
-            for (let j = 0; j < this.gridSize; j++) {
-                const t = u8[c++] || 0;
-                const x = Math.trunc(t / config.texture.columns);
-                const y = Math.trunc(t % config.texture.columns);
-                this.map[i][j] = [x, y];
+        try {
+            const decoded = atob(state);
+            const parts = decoded.split('|');
+            
+            if (parts.length >= 2) {
+                // New format: gridSize|textureId:row:col,...
+                this.gridSize = parseInt(parts[0]);
+                const tiles = parts[1].split(',');
+                this.map = this.createEmptyMap(this.gridSize);
+                
+                let idx = 0;
+                for (let i = 0; i < this.gridSize; i++) {
+                    for (let j = 0; j < this.gridSize; j++) {
+                        if (idx < tiles.length && tiles[idx]) {
+                            const tileData = tiles[idx].split(':');
+                            if (tileData.length === 3) {
+                                this.map[i][j] = [
+                                    parseInt(tileData[0]),
+                                    parseInt(tileData[1]),
+                                    parseInt(tileData[2])
+                                ];
+                            }
+                        }
+                        idx++;
+                    }
+                }
+            } else {
+                // Old format: binary encoding
+                const u8 = this.fromBase64(state);
+                let c = 0;
+                
+                for (let i = 0; i < this.gridSize; i++) {
+                    for (let j = 0; j < this.gridSize; j++) {
+                        const t = u8[c++] || 0;
+                        const x = Math.trunc(t / config.texture.columns);
+                        const y = Math.trunc(t % config.texture.columns);
+                        this.map[i][j] = [0, x, y];
+                    }
+                }
             }
+        } catch (e) {
+            console.error('Error loading hash state:', e);
         }
     }
 
